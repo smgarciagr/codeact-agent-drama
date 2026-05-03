@@ -1,0 +1,20 @@
+# Generated at runtime
+kdrama.db
+audit.log
+dramas_export.json
+handler_boilerplate.go
+temp_agent_task.go
+
+# Environment (contains API keys) - copy .env.example to .env
+.env
+
+# Go binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go build cache
+*.test
+*.out

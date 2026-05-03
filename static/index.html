@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>codeact-agent-drama 💜</title>
+    <style>
+        :root {
+            --lavender: #E6E6FA;
+            --deep-purple: #6A5ACD;
+            --soft-purple: #9370DB;
+            --bg: #F8F9FA;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: auto; }
+        h1 { color: var(--deep-purple); text-align: center; }
+        
+        /* Drama Table */
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; border-bottom: 2px solid var(--lavender); padding: 10px; color: var(--deep-purple); }
+        td { padding: 10px; border-bottom: 1px solid #eee; }
+
+        /* Agent Terminal */
+        .agent-section { background: #5c1a2a; color: #f8f8f2; padding: 20px; border-radius: 12px; border-left: 5px solid #8B0032; }
+        .input-group { display: flex; gap: 10px; margin-top: 15px; }
+        input { flex: 1; padding: 10px; border-radius: 6px; border: none; font-size: 14px; }
+        button { background: var(--soft-purple); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
+        button:hover { background: var(--deep-purple); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #log { margin-top: 15px; font-family: 'Courier New', monospace; font-size: 0.85em; max-height: 200px; overflow-y: auto; background: #1e1e1e; padding: 12px; border-radius: 8px; }
+
+        /* Code viewer */
+        .code-section { margin-top: 15px; }
+        .code-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .code-header span { color: #bd93f9; font-size: 0.85em; font-weight: bold; }
+        .badge { background: var(--soft-purple); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75em; }
+        .code-block { background: #1a1a2e; color: #50fa7b; padding: 12px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.8em; overflow-x: auto; white-space: pre-wrap; max-height: 250px; overflow-y: auto; border: 1px solid #333; }
+
+        /* Quick actions */
+        .quick-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; margin-bottom: 10px; }
+        .quick-btn { background: transparent; color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 12px; cursor: pointer; font-size: 0.75em; transition: all 0.2s; }
+        .quick-btn:hover { color: #fff; border-color: #8B0032; background: rgba(139,0,50,0.2); }
+
+        /* Download link */
+        .download-link { color: #8be9fd; text-decoration: underline; cursor: pointer; font-size: 0.85em; margin-top: 8px; display: inline-block; }
+
+        /* Spinner */
+        .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #888; border-top-color: #8B0032; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>KDrama Tracker Agent 🎬</h1>
+
+        <div class="card">
+            <h3>My Dramas</h3>
+            <table id="dramaTable">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Rating</th>
+                        <th>Genre</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div class="agent-section">
+            <h3>Agent Commands (CodeAct)</h3>
+            <div class="quick-actions">
+                <button class="quick-btn" onclick="setCommand('Add drama \'Title\' with genre \'Romance\', rating 9 and status \'Watching\'')">Add drama</button>
+                <button class="quick-btn" onclick="setCommand('List all dramas')">List all</button>
+                <button class="quick-btn" onclick="setCommand('Delete drama \'Title\'')">Delete drama</button>
+                <button class="quick-btn" onclick="setCommand('Show stats and average rating')">Stats</button>
+                <button class="quick-btn" onclick="setCommand('Export dramas to JSON')">Export JSON</button>
+                <button class="quick-btn" onclick="setCommand('Change status of \'Title\' to \'Finished\'')">Update status</button>
+                <button class="quick-btn" onclick="setCommand('Check if https://google.com is up')">Health check</button>
+                <button class="quick-btn" onclick="setCommand('Generate a boilerplate Go file for a REST handler')">Generate boilerplate</button>
+            </div>
+            <div class="input-group">
+                <input type="text" id="commandInput" placeholder="Write a command or click a suggestion above..." onkeydown="if(event.key==='Enter')sendCommand()">
+                <button id="execBtn" onclick="sendCommand()">Execute</button>
+            </div>
+
+            <div id="log">
+                <span style="color:#888">Waiting for commands...</span>
+            </div>
+
+            <div id="codeSection" class="code-section hidden">
+                <div class="code-header">
+                    <span>Generated Code (CodeAct)</span>
+                    <div>
+                        <span id="attemptsBadge" class="badge hidden"></span>
+                    </div>
+                </div>
+                <div id="codeBlock" class="code-block"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function setCommand(text) {
+            document.getElementById('commandInput').value = text;
+            document.getElementById('commandInput').focus();
+        }
+
+        async function loadDramas() {
+            const resp = await fetch('/api/dramas');
+            const data = await resp.json();
+            const tbody = document.querySelector('#dramaTable tbody');
+            tbody.innerHTML = data.map(d => `
+                <tr>
+                    <td>${d.title}</td>
+                    <td>${d.status}</td>
+                    <td>⭐ ${d.rating}</td>
+                    <td>${d.genre}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function sendCommand() {
+            const cmd = document.getElementById('commandInput').value.trim();
+            if (!cmd) return;
+
+            const log = document.getElementById('log');
+            const btn = document.getElementById('execBtn');
+            const codeSection = document.getElementById('codeSection');
+            const codeBlock = document.getElementById('codeBlock');
+            const attemptsBadge = document.getElementById('attemptsBadge');
+
+            // Show spinner, disable button
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Thinking...';
+            log.innerHTML = `<span style="color:#f8f8f2">> ${cmd}</span><br><span style="color:#888"><span class="spinner"></span>Generating code...</span>`;
+            codeSection.classList.add('hidden');
+
+            try {
+                const resp = await fetch('/api/agent/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: cmd })
+                });
+                const result = await resp.json();
+
+                // Build log output
+                let logHtml = `<span style="color:#f8f8f2">> ${cmd}</span><br>`;
+
+                if (result.error) {
+                    logHtml += `<span style="color:#ff5555">${result.error}</span><br>`;
+                }
+
+                if (result.thought) {
+                    logHtml += `<span style="color:#50fa7b">Thought: ${result.thought}</span><br>`;
+                }
+
+                if (result.output) {
+                    logHtml += `<span style="color:#8be9fd">Output: ${result.output}</span>`;
+                    if (result.output.includes('dramas_export.json')) {
+                        logHtml += `<br><a class="download-link" href="/exports/dramas_export.json" download>Download dramas_export.json</a>`;
+                    }
+                }
+
+                log.innerHTML = logHtml;
+
+                // Show generated code
+                if (result.code) {
+                    codeSection.classList.remove('hidden');
+                    codeBlock.textContent = result.code;
+                }
+
+                // Show attempts badge
+                if (result.attempts && result.attempts > 1) {
+                    attemptsBadge.classList.remove('hidden');
+                    attemptsBadge.textContent = `${result.attempts} attempts (feedback loop)`;
+                } else {
+                    attemptsBadge.classList.add('hidden');
+                }
+
+                if (result.success) {
+                    loadDramas();
+                }
+            } catch (e) {
+                log.innerHTML = `<span style="color:#ff5555">Network error: ${e.message}</span>`;
+            }
+
+            // Reset button
+            btn.disabled = false;
+            btn.innerHTML = 'Execute';
+        }
+
+        loadDramas();
+    </script>
+</body>
+</html>
+</body>
+</html>
